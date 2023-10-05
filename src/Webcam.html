@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display Webcam Stream</title>
+
+    <style>
+        h1 {
+            font-family: sans-serif;
+            color:pink;
+        }
+        body {
+	background-image: url("download.png");
+  }
+        body {
+            margin: 50px;
+        }
+
+        #container {
+            margin: 0px auto;
+            width: 100%; /* Allow dynamic sizing */
+            max-width: 800px; /* Set a max width for responsiveness */
+            border: 10px #333 solid;
+        }
+
+        #videoElement {
+            width: 100%; /* Allow dynamic sizing */
+            background-color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>Display Webcam Stream</h1>
+    <div id="container">
+        <video autoplay="true" id="videoElement"></video>
+    </div>
+    <button id="startButton">Start Camera</button>
+    <button id="stopButton">Stop Camera</button>
+    <button id="startRecordingButton">Start Recording</button>
+    <button id="stopRecordingButton">Stop Recording</button>
+    <script>
+        let video = document.querySelector("#videoElement");
+        let startButton = document.querySelector("#startButton");
+        let stopButton = document.querySelector("#stopButton");
+        let startRecordingButton = document.querySelector("#startRecordingButton");
+        let stopRecordingButton = document.querySelector("#stopRecordingButton");
+        let mediaRecorder;
+        let chunks = [];
+
+        startButton.addEventListener("click", function () {
+            if (navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(function (stream) {
+                        video.srcObject = stream;
+                    })
+                    .catch(function (error) {
+                        console.log("Something went wrong!");
+                    });
+            } else {
+                console.log("getUserMedia not supported!");
+            }
+        });
+
+        stopButton.addEventListener("click", function () {
+            let stream = video.srcObject;
+            if (stream) {
+                let tracks = stream.getTracks();
+                tracks.forEach(function (track) {
+                    track.stop();
+                });
+                video.srcObject = null;
+            } else {
+                console.log("No camera stream to stop.");
+            }
+        });
+
+        startRecordingButton.addEventListener("click", function () {
+            if (video.srcObject) {
+                if (Notification.permission === "granted") {
+                    new Notification("Recording Started");
+                }
+                mediaRecorder = new MediaRecorder(video.srcObject);
+                mediaRecorder.ondataavailable = function (event) {
+                    if (event.data.size > 0) {
+                        chunks.push(event.data);
+                    }
+                };
+                mediaRecorder.onstop = function () {
+                    let blob = new Blob(chunks, { type: "video/webm" });
+                    let url = URL.createObjectURL(blob);
+                    let a = document.createElement("a");
+                    a.href = url;
+                    a.download = "recorded-video.webm";
+                    a.textContent = "Download Recorded Video";
+                    document.body.appendChild(a);
+                };
+                mediaRecorder.start();
+                startRecordingButton.disabled = true;
+                stopRecordingButton.disabled = false;
+            } else {
+                console.log("No camera stream to record.");
+            }
+        });
+
+        stopRecordingButton.addEventListener("click", function () {
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.stop();
+                startRecordingButton.disabled = false;
+                stopRecordingButton.disabled = true;
+            }
+        });
+    </script>
+</body>
+</html>
